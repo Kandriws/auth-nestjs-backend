@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, FindOneOptions } from 'typeorm';
 
@@ -7,12 +11,22 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { ResponseUserDto } from './dto/response-user.dto';
 import { UserMapper } from './mappers/user.mapper';
+import { OtpService } from 'src/otp/services/Otp.service';
+import { OtpType } from 'src/otp/enums/otp.enum';
+import { UserVerifiedStatus } from './enums/user-verified-status.enum';
+import { EmailService } from 'src/email/email.service';
+import {
+  generateWelcomeUserEmail,
+  requestNewOtpEmail,
+} from 'src/utils/welcome-user';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly otpService: OtpService,
+    private readonly emailService: EmailService,
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<ResponseUserDto> {
@@ -28,7 +42,9 @@ export class UsersService {
 
     const newUser = this.userRepository.create(createUserDto);
     await this.userRepository.save(newUser);
-    return UserMapper.toResponseUserDto(newUser);
+    const userDto = UserMapper.toResponseUserDto(newUser);
+    await this.sendEmailVerification(newUser, OtpType.EMAIL_VERIFICATION);
+    return userDto;
   }
 
   async findOne(where: FindOneOptions<User>): Promise<ResponseUserDto> {
@@ -78,5 +94,49 @@ export class UsersService {
     }
     user.hashedRefreshToken = hashedRefreshToken;
     return await this.userRepository.save(user);
+  }
+
+  async verifyEmail(userId: string, otpToken: string): Promise<void> {
+    const isVerified = await this.otpService.verifyOtp(userId, otpToken);
+
+    if (!isVerified) {
+      throw new BadRequestException(`Invalid OTP for user with id ${userId}`);
+    }
+
+    const user = await this.userRepository.findOne({ where: { id: userId } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    user.verified = UserVerifiedStatus.VERIFIED;
+    await this.userRepository.save(user);
+  }
+
+  async sendEmailVerification(user: User, otpType: OtpType): Promise<void> {
+    try {
+      const otpToken = await this.otpService.createOtp(user.id, otpType);
+
+      if (otpType === OtpType.RESET_OTP) {
+        const emailBody = requestNewOtpEmail(user.name, otpToken);
+        this.emailService.sendEmail({
+          recipients: [user.email],
+          subject: 'Email Verification',
+          html: emailBody,
+        });
+      }
+
+      if (otpType === OtpType.EMAIL_VERIFICATION) {
+        const emailBody = generateWelcomeUserEmail(user.name, otpToken);
+        this.emailService.sendEmail({
+          recipients: [user.email],
+          subject: 'Welcome to Our Service',
+          html: emailBody,
+        });
+      }
+    } catch (error) {
+      throw new BadRequestException(
+        `Failed to send email verification to ${user.email}: ${error.message}`,
+      );
+    }
   }
 }

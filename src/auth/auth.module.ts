@@ -12,10 +12,12 @@ import { JWTAuthGuard } from './guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
 import { TokenService } from './services/token.service';
 import { GoogleStrategy } from './strategies/google.strategy';
+import { OtpModule } from 'src/otp/otp.module';
 
 @Module({
   imports: [
     UsersModule,
+    OtpModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
     ConfigModule.forFeature(refreshJwtConfig),

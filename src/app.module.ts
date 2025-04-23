@@ -4,8 +4,13 @@ import { AuthModule } from './auth/auth.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CommonModule } from './common/common.module';
 import { envs } from './common/config';
+import { OtpModule } from './otp/otp.module';
+import { ConfigModule } from '@nestjs/config';
+import { EmailModule } from './email/email.module';
+
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     AuthModule,
     TypeOrmModule.forRoot({
@@ -19,6 +24,8 @@ import { envs } from './common/config';
       synchronize: envs.isDevelopment,
     }),
     CommonModule,
+    OtpModule,
+    EmailModule,
   ],
   controllers: [],
   providers: [],

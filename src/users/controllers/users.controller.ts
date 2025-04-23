@@ -18,6 +18,7 @@ import { UsersService } from '../users.service';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { ResponseUserDto } from '../dto/response-user.dto';
+import { Public } from 'src/auth/decorators/public.decorator';
 
 @Controller('users')
 //@UseGuards(JWTAuthGuard, SessionAuthGuard)
@@ -25,6 +26,7 @@ import { ResponseUserDto } from '../dto/response-user.dto';
 export class UsersController {
   constructor(private readonly userService: UsersService) {}
 
+  @Public()
   @Post('create')
   create(@Body() createUserDto: CreateUserDto): Promise<ResponseUserDto> {
     return this.userService.create(createUserDto);

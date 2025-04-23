@@ -9,6 +9,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
 } from 'typeorm';
+import { UserVerifiedStatus } from '../enums/user-verified-status.enum';
 
 @Entity()
 export class User {
@@ -25,6 +26,9 @@ export class User {
   @Exclude()
   password: string;
 
+  @Column({ nullable: true })
+  avatarUrl: string;
+
   @CreateDateColumn()
   createdAt: Date;
 
@@ -37,6 +41,13 @@ export class User {
 
   @Column({ nullable: true })
   hashedRefreshToken: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserVerifiedStatus,
+    default: UserVerifiedStatus.UNVERIFIED,
+  })
+  verified: UserVerifiedStatus;
 
   @BeforeInsert()
   @BeforeUpdate()

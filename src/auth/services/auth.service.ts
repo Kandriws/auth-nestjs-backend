@@ -8,7 +8,7 @@ import {
 import { RegisterAuthDto } from '../dto/register-auth.dto';
 import { UsersService } from 'src/users/users.service';
 import * as bcrypt from 'bcrypt';
-import { LoginAuthDto } from '../dto';
+import { LoginAuthDto, RequestOtpDto } from '../dto';
 import { ResponseUserDto } from 'src/users/dto/response-user.dto';
 import { plainToInstance } from 'class-transformer';
 import refreshJwtConfig from '../config/refresh-jwt.config';
@@ -21,6 +21,9 @@ import {
 import { TokenService } from './token.service';
 import { UserMapper } from 'src/users/mappers/user.mapper';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { UserVerifiedStatus } from 'src/users/enums/user-verified-status.enum';
+import { OtpService } from 'src/otp/services/Otp.service';
+import { OtpType } from 'src/otp/enums/otp.enum';
 
 @Injectable()
 export class AuthService {
@@ -28,6 +31,7 @@ export class AuthService {
   constructor(
     private readonly userService: UsersService,
     private readonly tokenService: TokenService,
+    private readonly otpService: OtpService,
     @Inject(refreshJwtConfig.KEY)
     private refreshTokenConfig: ConfigType<typeof refreshJwtConfig>,
   ) {}
@@ -77,7 +81,7 @@ export class AuthService {
   }
 
   async login(loginAuthDto: LoginAuthDto): Promise<AuthResponseType> {
-    const { email, password } = loginAuthDto;
+    const { email, password, otp } = loginAuthDto;
     const user = await this.userService.findOneFull({
       where: { email },
     });
@@ -91,13 +95,28 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (user.verified === UserVerifiedStatus.UNVERIFIED) {
+      if (!otp) {
+        throw new UnauthorizedException(
+          'User account is not verified, please verify your email',
+        );
+      }
+      await this.userService.verifyEmail(user.id, otp);
+    }
+
     const payload: AuthJwtPayload = {
       sub: user.id,
       email: user.email,
     };
 
     const { token, refreshToken } = await this.generateTokens(payload);
-    await this.userService.updateHashedRefreshToken(user.id, refreshToken);
+    try {
+      await this.userService.updateHashedRefreshToken(user.id, refreshToken);
+    } catch (error) {
+      this.logger.error('Failed to update hashed refresh token', error);
+      throw new UnauthorizedException('Failed to update refresh token');
+    }
+
     const responseUser = UserMapper.toResponseUserDto(user);
     return {
       success: true,
@@ -225,6 +244,32 @@ export class AuthService {
       token,
       refreshToken,
       user,
+    };
+  }
+
+  async requestOtp(requestOtpDto: RequestOtpDto): Promise<{
+    message: string;
+    success: boolean;
+  }> {
+    const { email } = requestOtpDto;
+    const user = await this.userService.findOneFull({
+      where: { email },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.verified === UserVerifiedStatus.VERIFIED) {
+      throw new UnauthorizedException('User already verified');
+    }
+
+    const userEntity = UserMapper.toEntity(user);
+    await this.userService.sendEmailVerification(userEntity, OtpType.RESET_OTP);
+
+    return {
+      message: 'OTP sent successfully',
+      success: true,
     };
   }
 }

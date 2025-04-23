@@ -4,6 +4,7 @@ import { RegisterAuthDto } from '../dto/register-auth.dto';
 import { LoginAuthDto } from '../dto/login-auth.dto';
 import { Public } from '../decorators/public.decorator';
 import { GoogleAuthGuard } from '../guards/google-auth.guard';
+import { RequestOtpDto } from '../dto';
 
 @Controller('auth')
 export class AuthController {
@@ -39,5 +40,11 @@ export class AuthController {
   @Get('callback')
   googleCallback(@Req() req: any) {
     return this.authService.googleLogin(req.user);
+  }
+
+  @Public()
+  @Post('request-otp')
+  requestOtp(@Body() requestOtpDto: RequestOtpDto) {
+    return this.authService.requestOtp(requestOtpDto);
   }
 }

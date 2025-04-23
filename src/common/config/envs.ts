@@ -17,6 +17,12 @@ interface EnvVars {
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
   GOOGLE_CALLBACK_URL: string;
+  OTP_EXPIRATION_MINUTES: number;
+  SMTP_HOST: string;
+  SMTP_PORT: number;
+  SMTP_USER: string;
+  SMTP_PASS: string;
+  SMTP_STATUS: string;
 }
 
 const envVarsSchema = joi
@@ -39,6 +45,12 @@ const envVarsSchema = joi
     GOOGLE_CLIENT_ID: joi.string().required(),
     GOOGLE_CLIENT_SECRET: joi.string().required(),
     GOOGLE_CALLBACK_URL: joi.string().required(),
+    OTP_EXPIRATION_MINUTES: joi.number().default(10).min(1).max(60).required(),
+    SMTP_HOST: joi.string().required(),
+    SMTP_PORT: joi.number().default(587).required(),
+    SMTP_USER: joi.string().required(),
+    SMTP_PASS: joi.string().required(),
+    SMTP_STATUS: joi.string().valid('true', 'false').default('false'),
   })
   .unknown(true);
 
@@ -70,4 +82,10 @@ export const envs = {
   GOOGLE_CLIENT_ID: envVars.GOOGLE_CLIENT_ID,
   GOOGLE_CLIENT_SECRET: envVars.GOOGLE_CLIENT_SECRET,
   GOOGLE_CALLBACK_URL: envVars.GOOGLE_CALLBACK_URL,
+  OTP_EXPIRATION_MINUTES: envVars.OTP_EXPIRATION_MINUTES,
+  SMTP_HOST: envVars.SMTP_HOST,
+  SMTP_PORT: envVars.SMTP_PORT,
+  SMTP_USER: envVars.SMTP_USER,
+  SMTP_PASS: envVars.SMTP_PASS,
+  SMTP_STATUS: envVars.SMTP_STATUS,
 };

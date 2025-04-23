@@ -25,4 +25,14 @@ export class UserMapper {
       hashedRefreshToken: user.hashedRefreshToken,
     };
   }
+
+  static toEntity(createUserDto: ResponseUserDto): User {
+    const user = new User();
+    user.id = createUserDto.id;
+    user.name = createUserDto.name;
+    user.email = createUserDto.email;
+    user.createdAt = createUserDto.createdAt;
+    user.updatedAt = createUserDto.updatedAt;
+    return user;
+  }
 }
