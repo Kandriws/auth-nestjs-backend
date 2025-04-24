@@ -114,3 +114,63 @@ export const requestNewOtpEmail = (name: string, otpToken: string): string => {
     </html>
   `;
 };
+
+export const forgotPasswordEmail = (
+  name: string,
+  resetLink: string,
+): string => {
+  return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Reset Your Password</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+                border: 1px solid #ddd;
+                border-radius: 8px;
+                background-color: #f9f9f9;
+            }
+            h1 {
+                color: #007BFF;
+            }
+            p {
+                margin: 10px 0;
+            }
+            .link {
+                font-size: 1.2em;
+                font-weight: bold;
+                color: #007BFF;
+                text-decoration: none;
+            }
+            .footer {
+                margin-top: 20px;
+                font-size: 0.9em;
+                color: #777;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Reset Your Password</h1>
+            <p>Hello ${name},</p>
+            <p>We received a request to reset your password. Please click the link below to reset your password:</p>
+            <p><a href="${resetLink}" class="link">Reset Password</a></p>
+            <p>If you did not request this, please ignore this email.</p>
+            <p class="footer">Best regards,<br>Your Service Team</p>
+        </div>
+    </body>
+    </html>
+  `;
+};

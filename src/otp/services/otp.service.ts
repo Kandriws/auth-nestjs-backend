@@ -4,16 +4,25 @@ import { Otp } from '../entities/otp.entity';
 import { MoreThan, Repository } from 'typeorm';
 import { OtpType } from '../enums/otp.enum';
 import { envs } from 'src/common/config';
-import { Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
+import resetPasswordJwtConfig from 'src/auth/config/reset-password-jwt.config';
+import { ConfigType } from '@nestjs/config';
+import { AuthJwtPayload } from 'src/auth/types';
+import { JwtService } from '@nestjs/jwt';
+import { ResponseUserDto } from 'src/users/dto/response-user.dto';
 
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
   constructor(
     @InjectRepository(Otp)
     private readonly otpRepository: Repository<Otp>,
+    private readonly jwtService: JwtService,
+    @Inject(resetPasswordJwtConfig.KEY)
+    private resetPasswordJwt: ConfigType<typeof resetPasswordJwtConfig>,
   ) {}
 
-  async createOtp(userId: string, type: OtpType): Promise<string> {
+  async createOtp(user: ResponseUserDto, type: OtpType): Promise<string> {
+    const userId = user.id;
     const existingOtp = await this.delayBetweenOtps(userId, type);
     if (existingOtp) {
       const timeLeft = existingOtp.expiresAt.getTime() - new Date().getTime();
@@ -28,8 +37,24 @@ export class OtpService {
       }
     }
 
-    await this.invalidateOldOtps(userId);
-    const otpToken = Math.floor(100000 + Math.random() * 900000).toString();
+    await this.invalidateOldOtps(userId, type);
+
+    let otpToken = this.generateOtpToken();
+
+    if (type === OtpType.RESET_PASSWORD) {
+      const payload: AuthJwtPayload = {
+        sub: user.id,
+        email: user.email,
+      };
+
+      const { token } = await this.generateToken(
+        payload,
+        this.resetPasswordJwt,
+      );
+
+      otpToken = token;
+    }
+
     const hashedOtp = await bcrypt.hash(otpToken, 10);
 
     const otp = this.otpRepository.create({
@@ -97,11 +122,15 @@ export class OtpService {
     await this.otpRepository.save(otp);
   }
 
-  private async invalidateOldOtps(userId: string): Promise<void> {
+  private async invalidateOldOtps(
+    userId: string,
+    type: OtpType,
+  ): Promise<void> {
     const oldOtps = await this.otpRepository.find({
       where: {
         user: { id: userId },
         isUsed: false,
+        type,
       },
     });
 
@@ -123,5 +152,36 @@ export class OtpService {
     });
 
     return lastOtp;
+  }
+
+  private generateOtpToken(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  async generateToken(
+    payload: AuthJwtPayload,
+    refreshTokenConfig: ConfigType<any>,
+  ): Promise<{ token: string }> {
+    const token = await this.jwtService.signAsync(payload, refreshTokenConfig);
+    return { token };
+  }
+
+  async verifyToken(
+    token: string,
+  ): Promise<{ userId: string; email: string } | null> {
+    try {
+      const decoded = await this.jwtService.verifyAsync(token, {
+        secret: this.resetPasswordJwt.secret,
+      });
+      const { sub, email } = decoded as AuthJwtPayload;
+
+      return {
+        userId: sub,
+        email,
+      };
+    } catch (error) {
+      this.logger.error(`Error verifying token: ${token}`, error);
+      return null;
+    }
   }
 }

@@ -10,14 +10,12 @@ import googleOauthConfig from './config/google-oauth.config';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JWTAuthGuard } from './guards/jwt-auth.guard';
 import { APP_GUARD } from '@nestjs/core';
-import { TokenService } from './services/token.service';
 import { GoogleStrategy } from './strategies/google.strategy';
-import { OtpModule } from 'src/otp/otp.module';
+import { TokenService } from './services/token.service';
 
 @Module({
   imports: [
     UsersModule,
-    OtpModule,
     JwtModule.registerAsync(jwtConfig.asProvider()),
     ConfigModule.forFeature(jwtConfig),
     ConfigModule.forFeature(refreshJwtConfig),
@@ -36,5 +34,6 @@ import { OtpModule } from 'src/otp/otp.module';
       useClass: JWTAuthGuard,
     },
   ],
+  exports: [AuthService],
 })
 export class AuthModule {}

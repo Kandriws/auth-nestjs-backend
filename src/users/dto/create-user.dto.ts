@@ -1,25 +1,23 @@
 import {
   IsEmail,
   IsNotEmpty,
-  MinLength,
-  Matches,
   IsString,
   IsOptional,
+  IsStrongPassword,
 } from 'class-validator';
 
 export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @IsNotEmpty()
-  @MinLength(8)
-  @Matches(
-    /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/,
-    {
-      message:
-        'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character',
-    },
-  )
+  @IsString()
+  @IsStrongPassword({
+    minLength: 8,
+    minLowercase: 1,
+    minNumbers: 1,
+    minSymbols: 1,
+    minUppercase: 1,
+  })
   password: string;
 
   @IsNotEmpty()

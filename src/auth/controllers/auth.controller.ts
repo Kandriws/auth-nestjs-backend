@@ -1,10 +1,19 @@
-import { Controller, Post, Body, UseGuards, Get, Req } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UseGuards,
+  Get,
+  Req,
+  Param,
+} from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { RegisterAuthDto } from '../dto/register-auth.dto';
 import { LoginAuthDto } from '../dto/login-auth.dto';
 import { Public } from '../decorators/public.decorator';
 import { GoogleAuthGuard } from '../guards/google-auth.guard';
 import { RequestOtpDto } from '../dto';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -40,6 +49,21 @@ export class AuthController {
   @Get('callback')
   googleCallback(@Req() req: any) {
     return this.authService.googleLogin(req.user);
+  }
+
+  @Public()
+  @Post('forgot-password')
+  forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email);
+  }
+
+  @Public()
+  @Post('reset-password/:token')
+  resetPassword(
+    @Param('token') token: string,
+    @Body() resetPasswordDto: ResetPasswordDto,
+  ) {
+    return this.authService.resetPassword(token, resetPasswordDto);
   }
 
   @Public()

@@ -16,9 +16,13 @@ import { OtpType } from 'src/otp/enums/otp.enum';
 import { UserVerifiedStatus } from './enums/user-verified-status.enum';
 import { EmailService } from 'src/email/email.service';
 import {
+  forgotPasswordEmail,
   generateWelcomeUserEmail,
   requestNewOtpEmail,
 } from 'src/utils/welcome-user';
+import * as bcrypt from 'bcrypt';
+import { envs } from 'src/common/config';
+import { ResetPasswordDto } from 'src/auth/dto/reset-password.dto';
 
 @Injectable()
 export class UsersService {
@@ -114,7 +118,7 @@ export class UsersService {
 
   async sendEmailVerification(user: User, otpType: OtpType): Promise<void> {
     try {
-      const otpToken = await this.otpService.createOtp(user.id, otpType);
+      const otpToken = await this.otpService.createOtp(user, otpType);
 
       if (otpType === OtpType.RESET_OTP) {
         const emailBody = requestNewOtpEmail(user.name, otpToken);
@@ -133,10 +137,72 @@ export class UsersService {
           html: emailBody,
         });
       }
+
+      if (otpType === OtpType.RESET_PASSWORD) {
+        const resetLink = `${envs.RESET_PASSWORD_URL}/${otpToken}`;
+        const emailBody = forgotPasswordEmail(user.name, resetLink);
+        this.emailService.sendEmail({
+          recipients: [user.email],
+          subject: 'Password Reset',
+          html: emailBody,
+        });
+      }
     } catch (error) {
+      console.error(error);
       throw new BadRequestException(
         `Failed to send email verification to ${user.email}: ${error.message}`,
       );
+    }
+  }
+
+  async resetPassword(
+    token: string,
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<{
+    user: ResponseUserDto;
+    message: string;
+    success: boolean;
+  }> {
+    try {
+      const { password } = resetPasswordDto;
+      const { userId, email } = await this.otpService.verifyToken(token);
+      const isValid = await this.otpService.verifyOtp(userId, token);
+
+      if (!isValid) {
+        throw new BadRequestException(
+          `Invalid Token for user with id ${userId}`,
+        );
+      }
+      const user = await this.userRepository.findOne({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException(`User with id ${userId} not found`);
+      }
+      if (user.email !== email) {
+        throw new BadRequestException(
+          `Email ${email} does not match the user with id ${userId}`,
+        );
+      }
+      const hashedPassword = await bcrypt.hash(password, 10);
+      user.password = hashedPassword;
+      user.verified = UserVerifiedStatus.VERIFIED;
+      await this.userRepository.save(user);
+      const userDto = UserMapper.toResponseUserDto(user);
+
+      return {
+        user: userDto,
+        message: 'Password reset successfully',
+        success: true,
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      } else if (error instanceof BadRequestException) {
+        throw error;
+      } else {
+        throw new BadRequestException(
+          `Failed to reset password for user with token ${token}: ${error.message}`,
+        );
+      }
     }
   }
 }

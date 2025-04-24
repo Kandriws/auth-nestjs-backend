@@ -6,6 +6,7 @@ import STRATEGIES_KEYS from '../constants/strategies-keys.constant';
 import googleOauthConfig from '../config/google-oauth.config';
 import { AuthService } from '../services/auth.service';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
+import { generateStrongPassword } from 'src/utils/password-generator';
 
 export class GoogleStrategy extends PassportStrategy(
   Strategy,
@@ -37,7 +38,7 @@ export class GoogleStrategy extends PassportStrategy(
         name: displayName,
         email: emails?.[0]?.value,
         avatarUrl: profile?.photos?.[0]?.value,
-        password: Math.random().toString(36).slice(-8),
+        password: generateStrongPassword(),
       };
 
       const user = await this.authService.validateGoogleUser(userPayload);

@@ -22,8 +22,8 @@ import { TokenService } from './token.service';
 import { UserMapper } from 'src/users/mappers/user.mapper';
 import { CreateUserDto } from 'src/users/dto/create-user.dto';
 import { UserVerifiedStatus } from 'src/users/enums/user-verified-status.enum';
-import { OtpService } from 'src/otp/services/Otp.service';
 import { OtpType } from 'src/otp/enums/otp.enum';
+import { ResetPasswordDto } from '../dto/reset-password.dto';
 
 @Injectable()
 export class AuthService {
@@ -31,7 +31,6 @@ export class AuthService {
   constructor(
     private readonly userService: UsersService,
     private readonly tokenService: TokenService,
-    private readonly otpService: OtpService,
     @Inject(refreshJwtConfig.KEY)
     private refreshTokenConfig: ConfigType<typeof refreshJwtConfig>,
   ) {}
@@ -188,6 +187,35 @@ export class AuthService {
 
   async logout(userId: string): Promise<void> {
     await this.userService.updateHashedRefreshToken(userId, null);
+  }
+
+  async forgotPassword(
+    email: string,
+  ): Promise<{ message: string; success: boolean }> {
+    const user = await this.userService.findOneFull({
+      where: { email },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const userEntity = UserMapper.toEntity(user);
+    await this.userService.sendEmailVerification(
+      userEntity,
+      OtpType.RESET_PASSWORD,
+    );
+
+    return {
+      message: 'OTP sent successfully',
+      success: true,
+    };
+  }
+
+  async resetPassword(
+    token: string,
+    resetPasswordDto: ResetPasswordDto,
+  ): Promise<{ message: string; success: boolean }> {
+    return await this.userService.resetPassword(token, resetPasswordDto);
   }
 
   async generateTokens(

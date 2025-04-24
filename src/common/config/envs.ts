@@ -23,6 +23,8 @@ interface EnvVars {
   SMTP_USER: string;
   SMTP_PASS: string;
   SMTP_STATUS: string;
+  RESET_PASSWORD_URL: string;
+  JWT_RESET_SECRET: string;
 }
 
 const envVarsSchema = joi
@@ -51,6 +53,8 @@ const envVarsSchema = joi
     SMTP_USER: joi.string().required(),
     SMTP_PASS: joi.string().required(),
     SMTP_STATUS: joi.string().valid('true', 'false').default('false'),
+    RESET_PASSWORD_URL: joi.string().required(),
+    JWT_RESET_SECRET: joi.string().required(),
   })
   .unknown(true);
 
@@ -88,4 +92,6 @@ export const envs = {
   SMTP_USER: envVars.SMTP_USER,
   SMTP_PASS: envVars.SMTP_PASS,
   SMTP_STATUS: envVars.SMTP_STATUS,
+  RESET_PASSWORD_URL: envVars.RESET_PASSWORD_URL,
+  JWT_RESET_SECRET: envVars.JWT_RESET_SECRET,
 };
